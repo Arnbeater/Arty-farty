@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arty-farty | Funky Animation Lab</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>🎨 Funky Animation Lab</h1>
+        <p>Move the sliders and make chaotic generative art in real time.</p>
+      </header>
+
+      <section class="controls" aria-label="Animation controls">
+        <label>
+          Particle count
+          <input id="particleCount" type="range" min="50" max="500" step="10" value="220" />
+        </label>
+        <label>
+          Warp amount
+          <input id="warpAmount" type="range" min="0" max="80" step="1" value="28" />
+        </label>
+        <label>
+          Glow intensity
+          <input id="glow" type="range" min="0" max="40" step="1" value="16" />
+        </label>
+        <button id="shuffle" type="button">Shuffle Palette</button>
+      </section>
+
+      <canvas id="artboard" aria-label="Animated generative artwork"></canvas>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
