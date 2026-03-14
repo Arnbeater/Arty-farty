@@ -9,7 +9,6 @@ const controls = {
   brightness: document.getElementById('brightness'),
   threshold: document.getElementById('threshold'),
   noise: document.getElementById('noise'),
-  invertTone: document.getElementById('invertTone'),
   inkColor: document.getElementById('inkColor'),
   paperColor: document.getElementById('paperColor'),
   render: document.getElementById('render'),
@@ -71,7 +70,7 @@ function loadImage(file) {
   });
 }
 
-function preprocessLuminance(imageData, contrast, brightness, noiseAmount, invertTone) {
+function preprocessLuminance(imageData, contrast, brightness, noiseAmount) {
   const values = new Float32Array(imageData.width * imageData.height);
 
   for (let i = 0; i < values.length; i += 1) {
@@ -82,10 +81,6 @@ function preprocessLuminance(imageData, contrast, brightness, noiseAmount, inver
     let lum = 0.299 * r + 0.587 * g + 0.114 * b;
 
     lum = (lum - 128) * contrast + 128 + brightness;
-
-    if (invertTone) {
-      lum = 255 - lum;
-    }
 
     if (noiseAmount > 0) {
       lum += (Math.random() * 2 - 1) * noiseAmount;
@@ -200,9 +195,8 @@ function renderDitheredBitmap() {
   const threshold = Number(controls.threshold.value);
   const noise = Number(controls.noise.value);
   const algorithm = controls.algorithm.value;
-  const invertTone = controls.invertTone.checked;
 
-  const luminance = preprocessLuminance(source, contrast, brightness, noise, invertTone);
+  const luminance = preprocessLuminance(source, contrast, brightness, noise);
 
   let binary;
   if (algorithm === 'ordered') {
@@ -223,7 +217,7 @@ function renderDitheredBitmap() {
   bitmapCanvas.getContext('2d').putImageData(bitmapData, 0, 0);
 
   drawBitmapToMainCanvas(bitmapCanvas);
-  controls.status.textContent = `Rendered ${algorithm} dithering • ${targetWidth}×${targetHeight}px${invertTone ? ' • inverted tones' : ''}.`;
+  controls.status.textContent = `Rendered ${algorithm} dithering • ${targetWidth}×${targetHeight}px.`;
 }
 
 controls.imageInput.addEventListener('change', async () => {
@@ -255,7 +249,6 @@ controls.render.addEventListener('click', renderDitheredBitmap);
   controls.brightness,
   controls.threshold,
   controls.noise,
-  controls.invertTone,
   controls.inkColor,
   controls.paperColor
 ].forEach((control) => {
@@ -287,8 +280,3 @@ window.addEventListener('resize', () => {
 fitCanvas();
 ctx.fillStyle = '#090613';
 ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-
-controls.inkColor.value = '#111111';
-controls.paperColor.value = '#f4f1e8';
-controls.invertTone.checked = false;
-
