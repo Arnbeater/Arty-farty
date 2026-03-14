@@ -1,9 +1,6 @@
 # Arty-farty
 
-A browser-based art playground with **two modes on one canvas**:
-
-1. **Dithering Bitmap Creator** for converting uploaded reference images into stylized bitmap art.
-2. **Monochrome Dither Animation Mode** for live generative bitmap-style visuals.
+A browser-based **Dithering Bitmap Creator** that turns uploaded photos/graphics into stylized bitmap art on a single canvas.
 
 ## Run locally
 
@@ -25,10 +22,8 @@ This repo includes `.github/workflows/deploy-pages.yml` so the app can be publis
 
 ## Features
 
-- Single shared canvas for both modes (starts in animation mode so motion is visible immediately).
-- Upload any reference image (photo, illustration, graphic) in dithering mode.
+- Upload any reference image (photo, illustration, graphic).
 - Dither algorithms: Floyd–Steinberg, ordered Bayer 4×4, or threshold.
-- Adjustable bitmap size, contrast, brightness, threshold, grain/noise, and invert toggle.
+- Adjustable bitmap size, contrast, brightness, threshold, and grain/noise.
 - Ink/paper color controls for custom monochrome palettes.
-- Animation controls for pixel density, speed, drift/warp, trails, glow, and pattern regeneration in monochrome dither style.
-- PNG export of the current canvas output.
+- One-canvas live preview with PNG export.
