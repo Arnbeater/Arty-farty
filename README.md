@@ -1,6 +1,6 @@
 # Arty-farty
 
-A tiny web app that generates funky JavaScript-powered particle animations and ASCII art from image references.
+A browser-based **Dithering Bitmap Creator** that turns uploaded photos/graphics into stylized bitmap art on a single canvas.
 
 ## Run locally
 
@@ -22,7 +22,8 @@ This repo includes `.github/workflows/deploy-pages.yml` so the app can be publis
 
 ## Features
 
-- Animated generative particle artwork on an HTML canvas.
-- Live controls for particle count, warp amount, and glow intensity.
-- ASCII converter: upload an image reference, tune detail, generate text art, and copy the result.
-- Palette shuffler for instant visual remixes.
+- Upload any reference image (photo, illustration, graphic).
+- Dither algorithms: Floyd–Steinberg, ordered Bayer 4×4, or threshold.
+- Adjustable bitmap size, contrast, brightness, threshold, and grain/noise.
+- Ink/paper color controls for custom monochrome palettes.
+- One-canvas live preview with PNG export.

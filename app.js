@@ -2,32 +2,29 @@ const canvas = document.getElementById('artboard');
 const ctx = canvas.getContext('2d');
 
 const controls = {
-  particleCount: document.getElementById('particleCount'),
-  warpAmount: document.getElementById('warpAmount'),
-  glow: document.getElementById('glow'),
-  shuffle: document.getElementById('shuffle'),
   imageInput: document.getElementById('imageInput'),
-  asciiWidth: document.getElementById('asciiWidth'),
-  convertAscii: document.getElementById('convertAscii'),
-  copyAscii: document.getElementById('copyAscii'),
-  asciiOutput: document.getElementById('asciiOutput'),
-  asciiStatus: document.getElementById('asciiStatus')
+  algorithm: document.getElementById('algorithm'),
+  bitmapWidth: document.getElementById('bitmapWidth'),
+  contrast: document.getElementById('contrast'),
+  brightness: document.getElementById('brightness'),
+  threshold: document.getElementById('threshold'),
+  noise: document.getElementById('noise'),
+  inkColor: document.getElementById('inkColor'),
+  paperColor: document.getElementById('paperColor'),
+  render: document.getElementById('render'),
+  downloadPng: document.getElementById('downloadPng'),
+  status: document.getElementById('status')
 };
 
-const palettes = [
-  ['#ff0075', '#00f5ff', '#f5ff00', '#8cff00'],
-  ['#f72585', '#7209b7', '#3a0ca3', '#4cc9f0'],
-  ['#f94144', '#f8961e', '#f9c74f', '#43aa8b'],
-  ['#e63946', '#f1fa8c', '#a8dadc', '#457b9d'],
-  ['#fb5607', '#ff006e', '#8338ec', '#3a86ff']
+const bayer4x4 = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5]
 ];
 
-const densityRamp = ' .,:;i1tfLCG08@';
-
-let activePalette = palettes[Math.floor(Math.random() * palettes.length)];
-let particles = [];
-let frame = 0;
 let loadedImage = null;
+let outputFilename = 'dithered-bitmap';
 
 function fitCanvas() {
   const ratio = window.devicePixelRatio || 1;
@@ -39,106 +36,188 @@ function fitCanvas() {
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 }
 
-function createParticles() {
-  const count = Number(controls.particleCount.value);
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
+function hexToRgb(hex) {
+  const normalized = hex.replace('#', '');
+  const int = Number.parseInt(normalized, 16);
 
-  particles = Array.from({ length: count }, (_, index) => ({
-    x: Math.random() * width,
-    y: Math.random() * height,
-    baseX: Math.random() * width,
-    baseY: Math.random() * height,
-    speed: 0.002 + Math.random() * 0.008,
-    spread: 10 + Math.random() * 35,
-    size: 1 + Math.random() * 3,
-    color: activePalette[index % activePalette.length]
-  }));
+  return {
+    r: (int >> 16) & 255,
+    g: (int >> 8) & 255,
+    b: int & 255
+  };
 }
 
-function draw() {
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
-  const warp = Number(controls.warpAmount.value);
-  const glow = Number(controls.glow.value);
-
-  ctx.fillStyle = 'rgba(7, 6, 15, 0.22)';
-  ctx.fillRect(0, 0, width, height);
-
-  particles.forEach((p, i) => {
-    const angle = frame * p.speed + i * 0.02;
-    const spiral = Math.sin(frame * 0.003 + i) * warp;
-    p.x = p.baseX + Math.cos(angle * 2.1) * (p.spread + spiral);
-    p.y = p.baseY + Math.sin(angle * 1.4) * (p.spread + spiral);
-
-    if (p.x < -60 || p.x > width + 60 || p.y < -60 || p.y > height + 60) {
-      p.baseX = Math.random() * width;
-      p.baseY = Math.random() * height;
-    }
-
-    ctx.shadowBlur = glow;
-    ctx.shadowColor = p.color;
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  ctx.shadowBlur = 0;
-  frame += 1;
-  requestAnimationFrame(draw);
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
-function loadImageFromFile(file) {
+function loadImage(file) {
   return new Promise((resolve, reject) => {
-    const img = new Image();
+    const image = new Image();
     const objectUrl = URL.createObjectURL(file);
 
-    img.onload = () => {
+    image.onload = () => {
       URL.revokeObjectURL(objectUrl);
-      resolve(img);
+      resolve(image);
     };
 
-    img.onerror = () => {
+    image.onerror = () => {
       URL.revokeObjectURL(objectUrl);
       reject(new Error('Unable to load image.'));
     };
 
-    img.src = objectUrl;
+    image.src = objectUrl;
   });
 }
 
-function imageToAscii(image, targetWidth) {
-  const sampleWidth = Math.max(20, targetWidth);
-  const scale = image.height / image.width;
-  const sampleHeight = Math.max(20, Math.floor(sampleWidth * scale * 0.52));
-  const buffer = document.createElement('canvas');
-  const bufferCtx = buffer.getContext('2d', { willReadFrequently: true });
+function preprocessLuminance(imageData, contrast, brightness, noiseAmount) {
+  const values = new Float32Array(imageData.width * imageData.height);
 
-  buffer.width = sampleWidth;
-  buffer.height = sampleHeight;
-  bufferCtx.drawImage(image, 0, 0, sampleWidth, sampleHeight);
+  for (let i = 0; i < values.length; i += 1) {
+    const offset = i * 4;
+    const r = imageData.data[offset];
+    const g = imageData.data[offset + 1];
+    const b = imageData.data[offset + 2];
+    let lum = 0.299 * r + 0.587 * g + 0.114 * b;
 
-  const imageData = bufferCtx.getImageData(0, 0, sampleWidth, sampleHeight);
-  let asciiText = '';
+    lum = (lum - 128) * contrast + 128 + brightness;
 
-  for (let y = 0; y < sampleHeight; y += 1) {
-    for (let x = 0; x < sampleWidth; x += 1) {
-      const offset = (y * sampleWidth + x) * 4;
-      const r = imageData.data[offset];
-      const g = imageData.data[offset + 1];
-      const b = imageData.data[offset + 2];
-      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      const index = Math.min(
-        densityRamp.length - 1,
-        Math.floor((1 - luminance) * densityRamp.length)
-      );
-      asciiText += densityRamp[index];
+    if (noiseAmount > 0) {
+      lum += (Math.random() * 2 - 1) * noiseAmount;
     }
-    asciiText += '\n';
+
+    values[i] = clamp(lum, 0, 255);
   }
 
-  return asciiText;
+  return values;
+}
+
+function ditherThreshold(values, width, height, threshold) {
+  const out = new Uint8Array(width * height);
+
+  for (let i = 0; i < out.length; i += 1) {
+    out[i] = values[i] >= threshold ? 1 : 0;
+  }
+
+  return out;
+}
+
+function ditherOrdered(values, width, height, threshold) {
+  const out = new Uint8Array(width * height);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const i = y * width + x;
+      const matrixValue = bayer4x4[y % 4][x % 4];
+      const localThreshold = threshold + (matrixValue - 7.5) * 8;
+      out[i] = values[i] >= localThreshold ? 1 : 0;
+    }
+  }
+
+  return out;
+}
+
+function ditherFloydSteinberg(values, width, height, threshold) {
+  const working = Float32Array.from(values);
+  const out = new Uint8Array(width * height);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const i = y * width + x;
+      const oldPixel = working[i];
+      const newPixel = oldPixel >= threshold ? 255 : 0;
+      out[i] = newPixel === 255 ? 1 : 0;
+      const error = oldPixel - newPixel;
+
+      if (x + 1 < width) working[i + 1] += error * (7 / 16);
+      if (x - 1 >= 0 && y + 1 < height) working[i + width - 1] += error * (3 / 16);
+      if (y + 1 < height) working[i + width] += error * (5 / 16);
+      if (x + 1 < width && y + 1 < height) working[i + width + 1] += error * (1 / 16);
+    }
+  }
+
+  return out;
+}
+
+function buildBitmapData(binaryPixels, width, height, ink, paper) {
+  const image = new ImageData(width, height);
+
+  for (let i = 0; i < binaryPixels.length; i += 1) {
+    const on = binaryPixels[i] === 1;
+    const c = on ? ink : paper;
+    const offset = i * 4;
+
+    image.data[offset] = c.r;
+    image.data[offset + 1] = c.g;
+    image.data[offset + 2] = c.b;
+    image.data[offset + 3] = 255;
+  }
+
+  return image;
+}
+
+function drawBitmapToMainCanvas(bitmapCanvas) {
+  const viewWidth = canvas.clientWidth;
+  const viewHeight = canvas.clientHeight;
+
+  ctx.fillStyle = '#090613';
+  ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+  const scale = Math.min(viewWidth / bitmapCanvas.width, viewHeight / bitmapCanvas.height);
+  const drawWidth = Math.max(1, Math.floor(bitmapCanvas.width * scale));
+  const drawHeight = Math.max(1, Math.floor(bitmapCanvas.height * scale));
+  const offsetX = Math.floor((viewWidth - drawWidth) / 2);
+  const offsetY = Math.floor((viewHeight - drawHeight) / 2);
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(bitmapCanvas, offsetX, offsetY, drawWidth, drawHeight);
+}
+
+function renderDitheredBitmap() {
+  if (!loadedImage) {
+    controls.status.textContent = 'Choose an image first.';
+    return;
+  }
+
+  const targetWidth = Number(controls.bitmapWidth.value);
+  const aspect = loadedImage.height / loadedImage.width;
+  const targetHeight = Math.max(1, Math.round(targetWidth * aspect));
+
+  const workCanvas = document.createElement('canvas');
+  const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+  workCanvas.width = targetWidth;
+  workCanvas.height = targetHeight;
+  workCtx.drawImage(loadedImage, 0, 0, targetWidth, targetHeight);
+
+  const source = workCtx.getImageData(0, 0, targetWidth, targetHeight);
+  const contrast = Number(controls.contrast.value);
+  const brightness = Number(controls.brightness.value);
+  const threshold = Number(controls.threshold.value);
+  const noise = Number(controls.noise.value);
+  const algorithm = controls.algorithm.value;
+
+  const luminance = preprocessLuminance(source, contrast, brightness, noise);
+
+  let binary;
+  if (algorithm === 'ordered') {
+    binary = ditherOrdered(luminance, targetWidth, targetHeight, threshold);
+  } else if (algorithm === 'threshold') {
+    binary = ditherThreshold(luminance, targetWidth, targetHeight, threshold);
+  } else {
+    binary = ditherFloydSteinberg(luminance, targetWidth, targetHeight, threshold);
+  }
+
+  const ink = hexToRgb(controls.inkColor.value);
+  const paper = hexToRgb(controls.paperColor.value);
+  const bitmapData = buildBitmapData(binary, targetWidth, targetHeight, ink, paper);
+
+  const bitmapCanvas = document.createElement('canvas');
+  bitmapCanvas.width = targetWidth;
+  bitmapCanvas.height = targetHeight;
+  bitmapCanvas.getContext('2d').putImageData(bitmapData, 0, 0);
+
+  drawBitmapToMainCanvas(bitmapCanvas);
+  controls.status.textContent = `Rendered ${algorithm} dithering • ${targetWidth}×${targetHeight}px.`;
 }
 
 controls.imageInput.addEventListener('change', async () => {
@@ -146,62 +225,58 @@ controls.imageInput.addEventListener('change', async () => {
 
   if (!file) {
     loadedImage = null;
-    controls.asciiStatus.textContent = 'Upload an image, then click Convert to ASCII.';
+    controls.status.textContent = 'No image selected.';
     return;
   }
 
-  controls.asciiStatus.textContent = `Loaded ${file.name}. Click Convert to ASCII.`;
+  outputFilename = file.name.replace(/\.[^/.]+$/, '') || 'dithered-bitmap';
 
   try {
-    loadedImage = await loadImageFromFile(file);
+    loadedImage = await loadImage(file);
+    controls.status.textContent = `Loaded image: ${file.name}. Click render.`;
   } catch (error) {
     loadedImage = null;
-    controls.asciiStatus.textContent = error.message;
+    controls.status.textContent = error.message;
   }
 });
 
-controls.convertAscii.addEventListener('click', () => {
-  if (!loadedImage) {
-    controls.asciiStatus.textContent = 'Choose an image file first.';
-    return;
-  }
+controls.render.addEventListener('click', renderDitheredBitmap);
 
-  const detail = Number(controls.asciiWidth.value);
-  const ascii = imageToAscii(loadedImage, detail);
-  controls.asciiOutput.textContent = ascii;
-  controls.asciiStatus.textContent = `ASCII generated at width ${detail} characters.`;
+[
+  controls.algorithm,
+  controls.bitmapWidth,
+  controls.contrast,
+  controls.brightness,
+  controls.threshold,
+  controls.noise,
+  controls.inkColor,
+  controls.paperColor
+].forEach((control) => {
+  control.addEventListener('input', () => {
+    if (loadedImage) {
+      renderDitheredBitmap();
+    }
+  });
 });
 
-controls.copyAscii.addEventListener('click', async () => {
-  const text = controls.asciiOutput.textContent;
-
-  if (!text) {
-    controls.asciiStatus.textContent = 'Nothing to copy yet. Convert an image first.';
-    return;
-  }
-
-  try {
-    await navigator.clipboard.writeText(text);
-    controls.asciiStatus.textContent = 'ASCII copied to clipboard.';
-  } catch {
-    controls.asciiStatus.textContent = 'Clipboard copy failed. Select and copy manually.';
-  }
+controls.downloadPng.addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.href = canvas.toDataURL('image/png');
+  link.download = `${outputFilename}-dithered.png`;
+  link.click();
 });
 
-controls.shuffle.addEventListener('click', () => {
-  activePalette = palettes[Math.floor(Math.random() * palettes.length)];
-  createParticles();
-  ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-});
-
-controls.particleCount.addEventListener('input', createParticles);
 window.addEventListener('resize', () => {
   fitCanvas();
-  createParticles();
+
+  if (loadedImage) {
+    renderDitheredBitmap();
+  } else {
+    ctx.fillStyle = '#090613';
+    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+  }
 });
 
 fitCanvas();
-createParticles();
-ctx.fillStyle = '#07060f';
+ctx.fillStyle = '#090613';
 ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-draw();
