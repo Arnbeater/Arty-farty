@@ -96,7 +96,7 @@ function ditherThreshold(values, width, height, threshold) {
   const out = new Uint8Array(width * height);
 
   for (let i = 0; i < out.length; i += 1) {
-    out[i] = values[i] >= threshold ? 1 : 0;
+    out[i] = values[i] <= threshold ? 1 : 0;
   }
 
   return out;
@@ -110,7 +110,7 @@ function ditherOrdered(values, width, height, threshold) {
       const i = y * width + x;
       const matrixValue = bayer4x4[y % 4][x % 4];
       const localThreshold = threshold + (matrixValue - 7.5) * 8;
-      out[i] = values[i] >= localThreshold ? 1 : 0;
+      out[i] = values[i] <= localThreshold ? 1 : 0;
     }
   }
 
@@ -125,8 +125,8 @@ function ditherFloydSteinberg(values, width, height, threshold) {
     for (let x = 0; x < width; x += 1) {
       const i = y * width + x;
       const oldPixel = working[i];
-      const newPixel = oldPixel >= threshold ? 255 : 0;
-      out[i] = newPixel === 255 ? 1 : 0;
+      const newPixel = oldPixel <= threshold ? 0 : 255;
+      out[i] = newPixel === 0 ? 1 : 0;
       const error = oldPixel - newPixel;
 
       if (x + 1 < width) working[i + 1] += error * (7 / 16);
