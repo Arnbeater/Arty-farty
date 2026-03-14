@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arty-farty | Funky Animation Lab</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>🎨 Funky Animation Lab</h1>
+        <p>Move sliders for particles, or upload an image and convert it into ASCII art.</p>
+      </header>
+
+      <section class="controls" aria-label="Animation controls">
+        <label>
+          Particle count
+          <input id="particleCount" type="range" min="50" max="500" step="10" value="220" />
+        </label>
+        <label>
+          Warp amount
+          <input id="warpAmount" type="range" min="0" max="80" step="1" value="28" />
+        </label>
+        <label>
+          Glow intensity
+          <input id="glow" type="range" min="0" max="40" step="1" value="16" />
+        </label>
+        <button id="shuffle" type="button">Shuffle Palette</button>
+      </section>
+
+      <canvas id="artboard" aria-label="Animated generative artwork"></canvas>
+
+      <section class="ascii" aria-label="ASCII art converter">
+        <h2>ASCII from image reference</h2>
+        <div class="ascii-controls">
+          <label>
+            Image file
+            <input id="imageInput" type="file" accept="image/*" />
+          </label>
+          <label>
+            Detail level
+            <input id="asciiWidth" type="range" min="40" max="180" step="2" value="96" />
+          </label>
+          <button id="convertAscii" type="button">Convert to ASCII</button>
+          <button id="copyAscii" type="button">Copy ASCII</button>
+        </div>
+        <p id="asciiStatus" class="ascii-status">Upload an image, then click Convert to ASCII.</p>
+        <pre id="asciiOutput" class="ascii-output" aria-live="polite"></pre>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
