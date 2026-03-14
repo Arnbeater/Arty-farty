@@ -10,7 +10,7 @@
     <main class="app">
       <header>
         <h1>🎨 Funky Animation Lab</h1>
-        <p>Move the sliders and make chaotic generative art in real time.</p>
+        <p>Move sliders for particles, or upload an image and convert it into ASCII art.</p>
       </header>
 
       <section class="controls" aria-label="Animation controls">
@@ -30,6 +30,24 @@
       </section>
 
       <canvas id="artboard" aria-label="Animated generative artwork"></canvas>
+
+      <section class="ascii" aria-label="ASCII art converter">
+        <h2>ASCII from image reference</h2>
+        <div class="ascii-controls">
+          <label>
+            Image file
+            <input id="imageInput" type="file" accept="image/*" />
+          </label>
+          <label>
+            Detail level
+            <input id="asciiWidth" type="range" min="40" max="180" step="2" value="96" />
+          </label>
+          <button id="convertAscii" type="button">Convert to ASCII</button>
+          <button id="copyAscii" type="button">Copy ASCII</button>
+        </div>
+        <p id="asciiStatus" class="ascii-status">Upload an image, then click Convert to ASCII.</p>
+        <pre id="asciiOutput" class="ascii-output" aria-live="polite"></pre>
+      </section>
     </main>
 
     <script src="app.js"></script>

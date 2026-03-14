@@ -5,7 +5,13 @@ const controls = {
   particleCount: document.getElementById('particleCount'),
   warpAmount: document.getElementById('warpAmount'),
   glow: document.getElementById('glow'),
-  shuffle: document.getElementById('shuffle')
+  shuffle: document.getElementById('shuffle'),
+  imageInput: document.getElementById('imageInput'),
+  asciiWidth: document.getElementById('asciiWidth'),
+  convertAscii: document.getElementById('convertAscii'),
+  copyAscii: document.getElementById('copyAscii'),
+  asciiOutput: document.getElementById('asciiOutput'),
+  asciiStatus: document.getElementById('asciiStatus')
 };
 
 const palettes = [
@@ -16,9 +22,12 @@ const palettes = [
   ['#fb5607', '#ff006e', '#8338ec', '#3a86ff']
 ];
 
+const densityRamp = ' .,:;i1tfLCG08@';
+
 let activePalette = palettes[Math.floor(Math.random() * palettes.length)];
 let particles = [];
 let frame = 0;
+let loadedImage = null;
 
 function fitCanvas() {
   const ratio = window.devicePixelRatio || 1;
@@ -79,6 +88,105 @@ function draw() {
   frame += 1;
   requestAnimationFrame(draw);
 }
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Unable to load image.'));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+function imageToAscii(image, targetWidth) {
+  const sampleWidth = Math.max(20, targetWidth);
+  const scale = image.height / image.width;
+  const sampleHeight = Math.max(20, Math.floor(sampleWidth * scale * 0.52));
+  const buffer = document.createElement('canvas');
+  const bufferCtx = buffer.getContext('2d', { willReadFrequently: true });
+
+  buffer.width = sampleWidth;
+  buffer.height = sampleHeight;
+  bufferCtx.drawImage(image, 0, 0, sampleWidth, sampleHeight);
+
+  const imageData = bufferCtx.getImageData(0, 0, sampleWidth, sampleHeight);
+  let asciiText = '';
+
+  for (let y = 0; y < sampleHeight; y += 1) {
+    for (let x = 0; x < sampleWidth; x += 1) {
+      const offset = (y * sampleWidth + x) * 4;
+      const r = imageData.data[offset];
+      const g = imageData.data[offset + 1];
+      const b = imageData.data[offset + 2];
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      const index = Math.min(
+        densityRamp.length - 1,
+        Math.floor((1 - luminance) * densityRamp.length)
+      );
+      asciiText += densityRamp[index];
+    }
+    asciiText += '\n';
+  }
+
+  return asciiText;
+}
+
+controls.imageInput.addEventListener('change', async () => {
+  const [file] = controls.imageInput.files;
+
+  if (!file) {
+    loadedImage = null;
+    controls.asciiStatus.textContent = 'Upload an image, then click Convert to ASCII.';
+    return;
+  }
+
+  controls.asciiStatus.textContent = `Loaded ${file.name}. Click Convert to ASCII.`;
+
+  try {
+    loadedImage = await loadImageFromFile(file);
+  } catch (error) {
+    loadedImage = null;
+    controls.asciiStatus.textContent = error.message;
+  }
+});
+
+controls.convertAscii.addEventListener('click', () => {
+  if (!loadedImage) {
+    controls.asciiStatus.textContent = 'Choose an image file first.';
+    return;
+  }
+
+  const detail = Number(controls.asciiWidth.value);
+  const ascii = imageToAscii(loadedImage, detail);
+  controls.asciiOutput.textContent = ascii;
+  controls.asciiStatus.textContent = `ASCII generated at width ${detail} characters.`;
+});
+
+controls.copyAscii.addEventListener('click', async () => {
+  const text = controls.asciiOutput.textContent;
+
+  if (!text) {
+    controls.asciiStatus.textContent = 'Nothing to copy yet. Convert an image first.';
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    controls.asciiStatus.textContent = 'ASCII copied to clipboard.';
+  } catch {
+    controls.asciiStatus.textContent = 'Clipboard copy failed. Select and copy manually.';
+  }
+});
 
 controls.shuffle.addEventListener('click', () => {
   activePalette = palettes[Math.floor(Math.random() * palettes.length)];

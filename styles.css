@@ -25,7 +25,8 @@ header {
   text-align: center;
 }
 
-h1 {
+h1,
+h2 {
   margin: 0;
 }
 
@@ -34,16 +35,27 @@ p {
   margin: 0.5rem 0 0;
 }
 
-.controls {
+.controls,
+.ascii {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 0.8rem;
-  align-items: end;
   background: rgba(17, 10, 35, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   padding: 0.9rem;
   backdrop-filter: blur(6px);
+}
+
+.controls {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  align-items: end;
+}
+
+.ascii-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+  gap: 0.8rem;
 }
 
 label {
@@ -52,7 +64,8 @@ label {
   font-size: 0.92rem;
 }
 
-input[type='range'] {
+input[type='range'],
+input[type='file'] {
   width: 100%;
 }
 
@@ -76,4 +89,25 @@ canvas {
   background: rgba(9, 6, 20, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
+}
+
+.ascii-status {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
+.ascii-output {
+  margin: 0;
+  min-height: 220px;
+  max-height: 480px;
+  overflow: auto;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: rgba(5, 4, 12, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.45rem;
+  line-height: 0.45rem;
+  white-space: pre;
 }

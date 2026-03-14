@@ -1,6 +1,6 @@
 # Arty-farty
 
-A tiny web app that generates funky JavaScript-powered particle animations.
+A tiny web app that generates funky JavaScript-powered particle animations and ASCII art from image references.
 
 ## Run locally
 
@@ -24,4 +24,5 @@ This repo includes `.github/workflows/deploy-pages.yml` so the app can be publis
 
 - Animated generative particle artwork on an HTML canvas.
 - Live controls for particle count, warp amount, and glow intensity.
+- ASCII converter: upload an image reference, tune detail, generate text art, and copy the result.
 - Palette shuffler for instant visual remixes.
